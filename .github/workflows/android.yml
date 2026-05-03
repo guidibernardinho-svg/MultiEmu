@@ -1,20 +1,16 @@
-name: Build MultiEmu
+name: Android Build
 
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
-    env:
-      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
-
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up Java 17
@@ -22,39 +18,32 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
+          cache: gradle
 
-      - name: Setup Android SDK
+      - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Accept licenses
-        run: yes | sdkmanager --licenses
+      - name: Accept Android licenses
+        run: yes | sdkmanager --licenses || true
 
-      - name: Install required SDK packages
+      - name: Install Android SDK packages
         run: |
-          sdkmanager "platform-tools"
-          sdkmanager "platforms;android-34"
-          sdkmanager "build-tools;34.0.0"
+          sdkmanager "platform-tools" || true
+          sdkmanager "platforms;android-34" || true
+          sdkmanager "build-tools;34.0.0" || true
 
       - name: Create local.properties
-        run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+        run: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
 
-      - name: Setup Gradle
+      - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v3
 
-      - name: Generate Gradle Wrapper
-        run: gradle wrapper --gradle-version 8.7
-
-      - name: Grant execute permission
-        run: chmod +x gradlew
-
-      - name: Clean project
-        run: ./gradlew clean
-
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug --refresh-dependencies --stacktrace
+      - name: Build APK directly
+        run: gradle :app:assembleDebug --stacktrace --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: MultiEmu-APK
+          name: MultiEmu-debug
           path: app/build/outputs/apk/debug/app-debug.apk
